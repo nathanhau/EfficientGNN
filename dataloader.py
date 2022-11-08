@@ -5,3 +5,8 @@ def load_obgn(dataset="obgn-arxiv"):
     data=dataset[0]
     split_idx= dataset.get_idx_split()
     return data, split_idx
+
+if __name__=="__main__":
+    data, split_idx = load_obgn()
+    print(data)
+    print(split_idx)
