@@ -48,10 +48,11 @@ class DeepSGC(nn.Module):
     def forward(self,g,features):
         h=features
         for i,layer in enumerate(self.layers):
-            h=self.dropout(h)
             h=layer(g,h)
             if i<self.layers.len()-1:
                 h=self.activation(h)
+                h=self.dropout(h)
+        return h
 
     def get_std(self):
         N = self.adj.shape[0]
@@ -61,6 +62,39 @@ class DeepSGC(nn.Module):
         stdv = N/torch.sqrt(torch.sum(d_i * d_j) * 3)
         # print(stdv)
         return stdv
+
+
+class SSGC(nn.Module):
+    def __init__(self,in_feats,n_classes,k,alpha,
+                bias=True):
+        super(SSGC,self).__init__()
+        self.in_feats=in_feats
+        self.n_classes=n_classes
+        self.k=k
+        self.alpha=alpha
+        self.fc=nn.Linear(in_feats,n_classes,bias=bias)
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.fc.weight)
+        if self.fc.bias is not None:
+            nn.init.zeros_(self.fc.bias)
+
+    def forward(self,feat):
+        feat=self.fc(feat)
+        return feat
+
+
+def ssgc_precompute(features,adj,k,alpha):
+    t=perf_counter()
+    f0=features
+    feature_set = torch.zeros_like(features)
+    for i in range(k):
+        features = torch.spmm(adj, features)
+        feature_set += (1-alpha)*features + alpha*feature_ori
+    feature_set /= degree 
+    precompute_time = perf_counter()-t
+    return feature_set, precompute_time
 
 # g = dgl.graph(([0,1,2,3,2,5], [1,2,3,4,0,3]))
 # g = dgl.add_self_loop(g)
