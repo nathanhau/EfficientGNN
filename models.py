@@ -66,7 +66,7 @@ class DeepSGC(nn.Module):
 
 #rewrite to fit all linear layers
 class DeepLinear(nn.Module):
-    def __init__(self,model,in_feats,n_hidden,n_classes,k,n_layers,activation,bias=True,norm=False,dropout=0,iso=False,adj=None,rewiring=False):
+    def __init__(self,model,in_feats,n_hidden,n_classes,k,n_layers,precompute,activation,bias=True,norm=False,dropout=0,iso=False,adj=None,rewiring=False):
         super(DeepLinear,self).__init__()
         self.model=model
         self.in_feats=in_feats
@@ -81,6 +81,8 @@ class DeepLinear(nn.Module):
         self.adj=adj
         self.layers=nn.ModuleList()
         self.klist=[]
+        self.precompute=precompute
+
         if not isinstance(n_layers, list):
             self.klist=[k//n_layers for i in range(n_layers)]
             self.klist[0]+=k%n_layers
@@ -92,8 +94,8 @@ class DeepLinear(nn.Module):
         if self.n_layers>1:
             self.layers.append(nn.Linear(in_feats,n_hidden,bias=self.bias))
             for i in range(1,n_layers-1):
-                self.layers.append(nn.Linear(n_hidden,n_hidden,bias=bias))
-            self.layers.append(nn.Linear(n_hidden,n_classes,bias=bias))
+                self.layers.append(nn.Linear(n_hidden,n_hidden,bias=self.bias))
+            self.layers.append(nn.Linear(n_hidden,n_classes,bias=self.bias))
         else:
             self.layers.append(nn.Linear(in_feats,n_classes,bias=self.bias))
         if self.iso and (self.adj != None):
@@ -123,14 +125,62 @@ class DeepLinear(nn.Module):
         # print(stdv)
         return stdv
 
+
+class SGC(nn.Module):
+    def __init__(self,in_feats,n_classes,bias=True):
+        super(DGC,self).__init__()
+        self.in_feats=in_feats
+        self.n_classes=n_classes
+        self.fc=nn.Linear(in_feats,n_classes,bias=bias)
+        self.precompute=None
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.fc.weight)
+        if self.fc.bias is not None:
+            nn.init.zeros_(self.fc.bias)
+
+    def forward(self,g,feat):
+        if self.precompute is None:
+            adj=g.adj()
+            self.precompute=mulAdj(adj, self.K)
+        h=torch.sparse.mm(self.precompute,feat)
+        h=self.fc(h)
+        return h
+
+class SGCRes(nn.Module):
+    def __init__(self,in_feats,n_classes,bias=True):
+        super(DGC,self).__init__()
+        self.in_feats=in_feats
+        self.n_classes=n_classes
+        self.fc=nn.Linear(in_feats,n_classes,bias=bias)
+        self.precompute=None
+        self.feat_ori=None
+
+    def reset_parameters(self):
+        nn.init.xavier_uniform_(self.fc.weight)
+        if self.fc.bias is not None:
+            nn.init.zeros_(self.fc.bias)
+
+    def forward(self,g,feat):
+        if self.feat_ori is None:
+            self.feat_ori=feat
+        if self.precompute is None:
+            adj=g.adj()
+            self.precompute=mulAdj(adj, self.K)
+        h=(1-self.alpha)*feat+self.alpha*self.feat_ori
+        h=torch.sparse.mm(self.precompute,feat)
+        h=self.fc(h)
+        return h
+
 class SSGC(nn.Module):
-    def __init__(self,in_feats,n_classes,k,alpha,
+    def __init__(self,in_feats,n_classes,K,alpha,
                 bias=True):
         super(SSGC,self).__init__()
         self.in_feats=in_feats
         self.n_classes=n_classes
-        self.k=k
+        self.K=K
         self.alpha=alpha
+        self.feat_ori=None
         self.fc=nn.Linear(in_feats,n_classes,bias=bias)
         self.reset_parameters()
 
@@ -139,35 +189,55 @@ class SSGC(nn.Module):
         if self.fc.bias is not None:
             nn.init.zeros_(self.fc.bias)
 
-    def forward(self,feat):
-        feat=self.fc(feat)
-        return feat
+    def forward(self,g,feat):
+        if self.feat_ori is None:
+            self.feat_ori=feat
+        adj=g.adj()
+        h = torch.zeros_like(feat)
+        for i in range(K):
+            feat = torch.spmm(adj, feat)
+            h += (1-self.alpha)*feat + self.alpha*self.feat_ori
+            h /= self.K
+        h=self.fc(h)
+        return h
 
 class DGC(nn.Module):
-    def __init__(self,in_feats,n_classes,bias=True):
+    def __init__(self,in_feats,n_classes,T,K,bias=True):
         super(DGC,self).__init__()
         self.in_feats=in_feats
         self.n_classes=n_classes
+        self.T=T
+        self.K=K
+        self.delta=T/K
         self.fc=nn.Linear(in_feats,n_classes,bias=bias)
-
+        self.precompute=None
+        self.reset_parameters()
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.fc.weight)
         if self.fc.bias is not None:
             nn.init.zeros_(self.fc.bias)
 
-    def forward(self,feat):
-        feat=self.fc(feat)
-        return feat
+    def forward(self,g,feat):
+        if self.precompute is None:
+            adj=g.adj()
+            S=getNormAugAdj(adj,aug=True)
+            I=torch.eye(adj.shape[0]).to_sparse()
+            self.precompute=(1-self.delta)*I + self.delta*S
+            for _ in range(self.K-1):
+                self.precompute=torch.sparse.mm(self.precompute,self.precompute)
+        h=torch.sparse.mm(self.precompute,feat)
+        h=self.fc(h)
+        return h
 
 
-def ssgc_precompute(features,adj,k,alpha):
+def ssgc_precompute(features,adj,K,alpha):
     t=perf_counter()
-    f0=features
+    feat_ori=features
     feature_set = torch.zeros_like(features)
-    for i in range(k):
+    for i in range(K):
         features = torch.spmm(adj, features)
-        feature_set += (1-alpha)*features + alpha*feature_ori
-    feature_set /= degree 
+        feature_set += (1-alpha)*features + alpha*feat_ori
+    feature_set /= K
     precompute_time = perf_counter()-t
     return feature_set, precompute_time
 
@@ -187,6 +257,11 @@ def dgc_precompute(features,adj,T,K):
     print(features,precompute_time)
     return features,precompute_time
 
+def mulAdj(adj,K):
+    for _ in range(self.K-1):
+        adj=torch.sparse.mm(adj,adj)
+    return adj
+    
 def getNormAugAdj(adj,aug=True):
     # print(adj.to_dense())
     if aug:
@@ -204,9 +279,12 @@ def getNormAugAdj(adj,aug=True):
 g = dgl.graph(([0,1,2,3,2,5], [1,2,3,4,0,3]))
 g=dgl.to_bidirected(g)
 # g = dgl.add_self_loop(g)
-print(getNormAugAdj(g.adj()).to_dense())
+# print(getNormAugAdj(g.adj()).to_dense())
 feat=torch.rand(6,5)
-dgc_precompute(feat, g.adj(), 5, 3)
+ssgc_precompute(feat, g.adj(), 5, 0.2)
+a=DGC(5,3,5,3)
+out=a(g,feat)
+# print(out)
 # model=DeepSGC(10, 6, 3, 7, 3, F.relu,iso=True,adj=g.adj())
 # for i in model.layers:
 #     print(i.fc.weight.shape)
