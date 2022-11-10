@@ -16,11 +16,16 @@ graph, label = dataset[0]
 print("graph", graph)
 print("label", label)
 
-edge_index=graph['edge_index']
+edge_index = graph['edge_index']
 print("edge_index", edge_index)
 edge_feat = graph['edge_feat']
 print("edge_feat", edge_feat)
-node_feat=graph['node_feat']
+node_feat = graph['node_feat']
 print("node_feat", node_feat)
-num_nodes=graph['num_nodes']
+num_nodes = graph['num_nodes']
 print("num_nodes", num_nodes)
+
+n_classes = dataset.num_classes
+print("n_classes", n_classes)
+in_feats = node_feat.shape[1]
+print("in_feats", in_feats)
