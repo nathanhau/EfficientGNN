@@ -194,7 +194,7 @@ class SSGC(nn.Module):
             self.feat_ori=feat
         adj=g.adj()
         h = torch.zeros_like(feat)
-        for i in range(K):
+        for i in range(self.K):
             feat = torch.spmm(adj, feat)
             h += (1-self.alpha)*feat + self.alpha*self.feat_ori
             h /= self.K
@@ -245,7 +245,7 @@ def ssgc_precompute(features,adj,K,alpha):
 def dgc_precompute(features,adj,T,K):
     print(features)
     if T==0 or K==0:
-        return feature,0
+        return features,0
     delta=T/K
     t=perf_counter()
     S=getNormAugAdj(adj,aug=True)
@@ -258,7 +258,7 @@ def dgc_precompute(features,adj,T,K):
     return features,precompute_time
 
 def mulAdj(adj,K):
-    for _ in range(self.K-1):
+    for _ in range(K-1):
         adj=torch.sparse.mm(adj,adj)
     return adj
     
@@ -284,7 +284,7 @@ feat=torch.rand(6,5)
 ssgc_precompute(feat, g.adj(), 5, 0.2)
 a=DGC(5,3,5,3)
 out=a(g,feat)
-# print(out)
+print(out)
 # model=DeepSGC(10, 6, 3, 7, 3, F.relu,iso=True,adj=g.adj())
 # for i in model.layers:
 #     print(i.fc.weight.shape)
