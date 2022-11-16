@@ -3,3 +3,4 @@ dgl
 torch
 ogb
 autopep8
+ipykernel
