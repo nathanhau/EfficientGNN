@@ -50,6 +50,37 @@ def preprocess_graph(g,self_loop=True):
     return g
 
 
+def get_prep_ogbn(dataset):
+    data = DglNodePropPredDataset(name = dataset, root = 'dataset/')
+    g, labels = data[0]
+    labels = labels[:, 0]
+    g.ndata['label'] = labels
+    g = dgl.add_reverse_edges(g)
+    features = g.ndata['feat']
+    idx_split = data.get_idx_split()
+    train_mask = idx_split['train']
+    val_mask = idx_split['valid']
+    test_mask = idx_split['test']
+    in_feats = features.shape[1]
+    n_classes = (labels.max() + 1).item()
+    return g, features, labels, n_classes, in_feats, train_mask, val_mask, test_mask
+
+def get_prep_pubmed():
+    data = PubmedGraphDataset()
+    g = data[0]
+    g = g.to(device)
+    features = g.ndata['feat']
+    labels = g.ndata['label']
+    train_mask = g.ndata['train_mask']
+    val_mask = g.ndata['val_mask']
+    test_mask = g.ndata['test_mask']
+    in_feats = features.shape[-1]
+    n_classes = data.num_labels
+    n_edges = g.number_of_edges()
+    g = dgl.remove_self_loop(g)
+    g = dgl.add_self_loop(g)
+    return g, features, labels, n_classes, in_feats, train_mask, val_mask, test_mask
+
 if __name__=="__main__":
     data, split_idx = load_obgn()
     print(data)
