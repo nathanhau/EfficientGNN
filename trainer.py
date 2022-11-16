@@ -13,7 +13,6 @@ def preprocess_linear(graph,features,model,K,T=None,alpha=None):
     elif (model=="ssgc"):
         assert isinstance(alpha, int), "Invalid alpha"
         precomputed,pt=ssgc_precompute(features,graph.adj(),K,alpha)
-
     elif (model=="dgc"):
         assert isinstance(T, int) or isinstance(T, float), "Invalid T"
         precomputed,pt=dgc_precompute(features,graph.adj(),T,K)
@@ -26,7 +25,7 @@ def train_linear(features,labels,n_classes,epochs=100,lr=0.2,weight_decay=5e-6):
     labels=F.one_hot(labels,num_classes=n_classes).squeeze().to(torch.float)
     ln=nn.Linear(feature_size,n_classes)
     optimizer=optim.Adam(ln.parameters(),lr=lr,weight_decay=weight_decay)
-    t=perf_counter();
+    t=perf_counter()
     for i in range(epochs):
         ln.train()
         optimizer.zero_grad()
@@ -40,3 +39,4 @@ def train_linear(features,labels,n_classes,epochs=100,lr=0.2,weight_decay=5e-6):
     training_time=perf_counter()-t
     return ln, training_time
 
+# def evaluation():
