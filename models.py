@@ -236,7 +236,7 @@ class SGC(nn.Module):
             self.precompute = mulAdj(adj, self.K)
         h = torch.sparse.mm(self.precompute, feat)
         h = self.fc(h)
-        print(self.norm)
+        # print(self.norm)
         if self.norm is not None:
             h = self.nm(h)
         return h
