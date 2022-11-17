@@ -17,6 +17,17 @@ def load_data(dataset):
         ds=DglNodePropPredDataset(name = "ogbn-arxiv", root = 'dataset/')
         graph,label=ds[0]
         split_idx= ds.get_idx_split()
+        maskdict={}
+        for (k,v) in split_idx.items():
+            mask=[False]*graph.num_nodes()
+            for i in v:
+                mask[i]=True
+            if k=="valid":
+                maskdict['val_mask']=torch.tensor(mask)
+            else:
+                maskdict[k+'_mask']=torch.tensor(mask)
+        return graph,label,maskdict    
+
     else:
 
         if dataset=="cora":
@@ -30,16 +41,19 @@ def load_data(dataset):
         graph=ds[0]
         label=graph.ndata['label']
         split_idx={}
-        for s in ['train','val','test']:
-            print("Converting "+s+" mask" )
-            idx=[]
-            for i,x in enumerate(graph.ndata[s+'_mask'].tolist()):
-                if x:
-                    idx.append(i)
-            if s=='val':
-                split_idx['valid']=torch.tensor(idx)
-            else:
-                split_idx[s]=torch.tensor(idx)
+        # for s in ['train','val','test']:
+        #     print("Converting "+s+" mask" )
+        #     idx=[]
+        #     for i,x in enumerate(graph.ndata[s+'_mask'].tolist()):
+        #         if x:
+        #             idx.append(i)
+        #     if s=='val':
+        #         split_idx['valid']=torch.tensor(idx)
+        #     else:
+        #         split_idx[s]=torch.tensor(idx)
+        split_idx['train_mask']=graph.ndata['train_mask']
+        split_idx['val_mask']=graph.ndata['val_mask']
+        split_idx['test_mask']=graph.ndata['test_mask']
     return graph,label,split_idx
 
 def preprocess_graph(g,self_loop=True):

@@ -16,7 +16,7 @@ def preprocess_linear(graph, features, model, K, T=None, alpha=None):
     if (model == "sgc"):
         precomputed, pt = sgc_precompute(features, graph.adj(), K)
     elif (model == "ssgc"):
-        assert isinstance(alpha, int), "Invalid alpha"
+        assert isinstance(alpha, float), "Invalid alpha"
         precomputed,pt=ssgc_precompute(features,graph.adj(),K,alpha)
     elif (model=="dgc"):
         assert isinstance(T, int) or isinstance(T, float), "Invalid T"
