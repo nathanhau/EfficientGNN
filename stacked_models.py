@@ -115,6 +115,7 @@ class LinearMLP(nn.Module):
         self.n_hidden = n_hidden
         self.n_classes = n_classes
         self.K = K
+        # self.n_mlp = len(mlp_d)+1
         self.n_mlp = len(mlp_d)+1
         self.bias = bias
         self.activation = activation
@@ -124,11 +125,11 @@ class LinearMLP(nn.Module):
         self.nm = nn.ModuleList()
         self.dropout = nn.Dropout(p=dropout)
         self.gnn = None
-        if model == "SGC":
+        if model == "sgc":
             self.gnn = SGC(self.in_feats, self.n_hidden, self.K, bias=self.bias, norm=self.norm)
-        elif model == "SSGC":
+        elif model == "ssgc":
             self.gnn = SSGC(self.in_feats, self.n_hidden, self.K, self.model_args["alpha"], bias=self.bias, norm=self.norm)
-        elif model == "DGC":
+        elif model == "dgc":
             self.gnn = DGC(self.in_feats, self.n_hidden, K, self.model_args["T"], bias=self.bias, norm=self.norm)
         else:
             raise Exception("Model not implemented")

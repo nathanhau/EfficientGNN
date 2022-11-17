@@ -11,7 +11,7 @@ from models.DGC import DGC
 
 class SGCRes(nn.Module):
     def __init__(self,in_feats,n_classes,K,alpha,bias=True,norm=None):
-        super(DGC,self).__init__()
+        super(SGCRes,self).__init__()
         self.in_feats=in_feats
         self.n_classes=n_classes
         self.K=K
