@@ -25,6 +25,7 @@ def preprocess_linear(graph, features, model, K, T=None, alpha=None):
         raise ValueError("Invalid model")
     return precomputed,pt
 
+
 def train_linear(features,labels,n_classes,epochs=100,lr=0.2,weight_decay=5e-6):
     feature_size=features.shape[1]
     labels=F.one_hot(labels,num_classes=n_classes).squeeze().to(torch.float)
