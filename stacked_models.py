@@ -16,7 +16,7 @@ from utilities.utils import mulAdj, getNormAugAdj
 
 
 class DeepLinear(nn.Module):
-    def __init__(self, model, model_args, in_feats, n_hidden, n_classes, K, n_layers, activation, bias=True, norm=None, dropout=0, iso=False, adj=None):
+    def __init__(self, model, model_args, in_feats, n_hidden, n_classes, K, n_layers, activation, device,bias=True, norm=None, dropout=0, iso=False, adj=None):
         super(DeepLinear, self).__init__()
         self.model = model
         self.model_args = model_args
@@ -33,6 +33,7 @@ class DeepLinear(nn.Module):
         self.prelayer = None
         self.layers = nn.ModuleList()
         self.klist = []
+        self.device=device
         # self.precompute=precompute
 
         if not isinstance(n_layers, list):
@@ -45,25 +46,25 @@ class DeepLinear(nn.Module):
 
         if self.n_layers > 1:
             if model == "SGC":
-                self.layers.append(SGC(self.in_feats, self.n_hidden, self.klist[0], bias=self.bias, norm=self.norm))
+                self.layers.append(SGC(self.in_feats, self.n_hidden, self.klist[0], device,bias=self.bias, norm=self.norm))
                 for i in range(1, self.n_layers-1):
-                    self.layers.append(SGC(self.n_hidden, self.n_hidden, self.klist[i], bias=self.bias, norm=self.norm))
-                self.layers.append(SGC(self.n_hidden, self.n_classes, self.klist[-1], bias=self.bias, norm=self.norm))
+                    self.layers.append(SGC(self.n_hidden, self.n_hidden, self.klist[i], device,bias=self.bias, norm=self.norm))
+                self.layers.append(SGC(self.n_hidden, self.n_classes, self.klist[-1], device,bias=self.bias, norm=self.norm))
             elif model == "SGCRes":
-                self.prelayer = nn.Linear(self.in_feats, self.n_hidden, bias=self.bias)
+                self.prelayer = nn.Linear(self.in_feats, self.n_hidden, bias=self.bias).to(device)
                 for i in range(0, self.n_layers-1):
-                    self.layers.append(SGCRes(self.n_hidden, self.n_hidden, self.klist[i], self.model_args["alpha"], bias=self.bias, norm=self.norm))
-                self.layers.append(SGCRes(self.n_hidden, self.n_classes, self.klist[-1], self.model_args["alpha"], bias=self.bias, norm=self.norm))
+                    self.layers.append(SGCRes(self.n_hidden, self.n_hidden, self.klist[i], self.model_args["alpha"],device, bias=self.bias, norm=self.norm))
+                self.layers.append(SGCRes(self.n_hidden, self.n_classes, self.klist[-1], self.model_args["alpha"],device, bias=self.bias, norm=self.norm))
             elif model == "SSGC":
-                self.prelayer = nn.Linear(self.in_feats, self.n_hidden, bias=self.bias)
+                self.prelayer = nn.Linear(self.in_feats, self.n_hidden, bias=self.bias).to(device)
                 for i in range(0, self.n_layers-1):
-                    self.layers.append(SSGC(self.n_hidden, self.n_hidden, self.klist[i], self.model_args["alpha"], bias=self.bias, norm=self.norm))
-                self.layers.append(SSGC(self.n_hidden, self.n_classes, self.klist[-1], self.model_args["alpha"], bias=self.bias, norm=self.norm))
+                    self.layers.append(SSGC(self.n_hidden, self.n_hidden, self.klist[i], self.model_args["alpha"],device, bias=self.bias, norm=self.norm))
+                self.layers.append(SSGC(self.n_hidden, self.n_classes, self.klist[-1], self.model_args["alpha"], device,bias=self.bias, norm=self.norm))
             elif model == "DGC":
-                self.layers.append(DGC(self.in_feats, self.n_hidden, self.klist[0], self.model_args["T"], bias=self.bias, norm=self.norm))
+                self.layers.append(DGC(self.in_feats, self.n_hidden, self.klist[0], self.model_args["T"], device,bias=self.bias, norm=self.norm))
                 for i in range(1, self.n_layers-1):
-                    self.layers.append(DGC(self.n_hidden, self.n_hidden, self.klist[i], self.model_args["T"], bias=self.bias, norm=self.norm))
-                self.layers.append(DGC(self.n_hidden, self.n_classes, self.klist[-1], self.model_args["T"], bias=self.bias, norm=self.norm))
+                    self.layers.append(DGC(self.n_hidden, self.n_hidden, self.klist[i], self.model_args["T"], device,bias=self.bias, norm=self.norm))
+                self.layers.append(DGC(self.n_hidden, self.n_classes, self.klist[-1], self.model_args["T"], device,bias=self.bias, norm=self.norm))
             else:
                 raise Exception("Model not implemented")
         else:
@@ -79,17 +80,21 @@ class DeepLinear(nn.Module):
                     layer.bias.data.uniform_(-stdv, stdv)
 
     def forward(self, g, features):
-        h = features
+        # print(features)
+        h = features.to(self.device)
+        # print(h)
         h = self.dropout(h)
         if self.model in ["SGCRes", "SSGC"]:
             h = self.prelayer(h)
             h = self.activation(h)
             h0 = h
             h = self.dropout(h)
+            
         for i, layer in enumerate(self.layers):
             if self.model in ["SGCRes", "SSGC"]:
                 h = layer(g, h, feat_ori=h0)
             else:
+                # print(h)
                 h = layer(g, h)
             if i < len(self.layers)-1:
                 h = self.activation(h)

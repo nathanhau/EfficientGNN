@@ -27,12 +27,15 @@ loss_fn = nn.CrossEntropyLoss()
 weight_decay = 5e-4
 
 # DGC
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-
-def train(model, g, features, labels, train_mask, val_mask, lr, weight_decay, is_linear=False):
+def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epochs,is_linear=False):
     t = perf_counter()
     optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=weight_decay)
+    train_mask=train_mask.to(device)
+    val_mask=val_mask.to(device)
+    labels=labels.to(device)
+    g=g.to(device)
+    features=features.to(device)
     for epoch in range(epochs):
         model.train()
         logits = None
@@ -58,9 +61,9 @@ def train(model, g, features, labels, train_mask, val_mask, lr, weight_decay, is
     training_time = perf_counter()-t
     print(f'Training time: {training_time:.4f}s')
 
-
-def test(model, g, features, labels, mask, is_linear=True):
+def test(model, g, features, labels, mask,is_linear=False):
     model.eval()
+    mask=mask.to(device)
     with torch.no_grad():
         logits = None
         if is_linear:
@@ -85,59 +88,66 @@ k_hop = 5
 num_layers = 5
 
 if __name__ == "__main__":
-    import argparse
+  import argparse
 
-    parser = argparse.ArgumentParser()
+  parser = argparse.ArgumentParser()
 
-    parser.add_argument("--dataset", help="arxiv|cora|citeseer|pubmed")
-    parser.add_argument("--mode", type=str, choices=["linear", "linearmlp", "deeplinear", "nonlinear"])
-    parser.add_argument("--model", type=str, choices=["sgc", "ssgc", "dgc", "sgc_res", "gcn"], help="sgc|ssgc|dgc|sgc_res")
-    parser.add_argument("--K", type=int)
-    parser.add_argument("--lr", type=float)
-    parser.add_argument("--wd", type=float)
-    parser.add_argument("--T", type=float)
-    parser.add_argument("--alpha", type=float)
+  parser.add_argument("--dataset", help="arxiv|cora|citeseer|pubmed")
+  parser.add_argument("--mode", type=str, choices=["linear","linearmlp","deeplinear"])
+  parser.add_argument("--model", type=str, choices=["sgc","ssgc","dgc","sgc_res","gcn"], help="sgc|ssgc|dgc|sgc_res|gcn")
+  parser.add_argument("--K","--k", type=int,default=2)
+  parser.add_argument("--lr",type=float)
+  parser.add_argument("--wd",type=str)
+  parser.add_argument("--T",type=float)
+  parser.add_argument("--alpha",type=float)
+  parser.add_argument("--epochs",type=int)
+  parser.add_argument("--layer_k",nargs="+",type=int)
+  parser.add_argument("--deep_hidden_d",type=int,default=32)
+  parser.add_argument("--dropout",type=float,default=0)
+  parser.add_argument("--norm",type=str,choices=["bn","ln"])
+  parser.add_argument("--iso",action='store_true')
+  parser.add_argument("--no-bias",action='store_false')
 
-    args = parser.parse_args()
 
-    graph, label, split_idx = load_data(args.dataset)
+  args=parser.parse_args()
+  graph, label, split_idx = load_data(args.dataset)
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    graph = preprocess_graph(graph)
+  graph = preprocess_graph(graph).to(device)
+  label=label.to(device)
+  # print(graph.ndata['feat'])
+  raw_features = graph.ndata['feat'].to(device)
 
-    raw_features = graph.ndata['feat']
+  in_feats = raw_features.shape[-1]
+  n_classes = label.max().item()+1
 
-    in_feats = raw_features.shape[-1]
-    n_classes = label.max()+1
+  # alpha is used for ssgc
+  if args.mode=="linear":
+    precomputed,pt = preprocess_linear(graph, raw_features , args.model, args.K, device,T=args.T, alpha=args.alpha)
+    ln=nn.Linear(raw_features.shape[1],n_classes).to(device)
+    train(ln,graph,precomputed,label,split_idx['train_mask'],split_idx['val_mask'],args.lr,float(args.wd),args.epochs,is_linear=True)
+    test(ln,graph,precomputed,label,split_idx['test_mask'],is_linear=True)
 
-    # alpha is used for ssgc
-    if args.mode == "linear":
-        precomputed, pt = preprocess_linear(graph, raw_features, args.model, K=args.K, T=args.T, alpha=args.alpha)
-        if args.model == "sgc":
-            model = SGC(in_feats, n_classes, 2, True, None)
-        elif args.model == "ssgc":
-            model = SSGC(in_feats, n_classes, K=2, alpha=0.1)
-        elif args.model == "dgc":
-            model = DGC(in_feats, n_classes, K=2, T=2)
-        elif args.model == "sgc_res":
-            model = SGCRes(in_feats, n_classes, K=2, alpha=0.1)
-        elif args.model == "gcn":
-            model = GCN(in_feats, 16, n_classes, 2, activation, dropout=dropout)
-        else:
-          model = nn.Linear(raw_features.shape[1], n_classes)
-        train(model, graph, precomputed, label, split_idx['train_mask'], split_idx['val_mask'], args.lr, float(args.wd), is_linear=True)
-        test(model, graph, precomputed, label, split_idx['test_mask'])
-    elif args.mode == "linearmlp":
-        precomputed, pt = preprocess_linear(graph, raw_features, args.model, K=args.K, T=args.T, alpha=args.alpha)
-        model = LinearMLP(in_feats, n_classes, 2, 16, activation, dropout=dropout)
-        train(model, graph, precomputed, label, split_idx['train_mask'], split_idx['val_mask'], args.lr, float(args.wd), is_linear=True)
-        test(model, graph, precomputed, label, split_idx['test_mask'])
+  elif args.mode=="deeplinear":
 
-    elif args.mode == "deeplinear":
-        precomputed, pt = preprocess_linear(graph, raw_features, args.model, K=args.K, T=args.T, alpha=args.alpha)
-        model = DeepLinear(args.model, {
-          "T": args.T,
-          "K": args.K,
-          "alpha": args.alpha,
-          }, in_feats, 16, n_classes, k_hop, num_layers, activation, dropout=dropout)
-        train(model, graph, precomputed, label, split_idx['train_mask'], split_idx['val_mask'], args.lr, float(args.wd), is_linear=True)
-        test(model, graph, precomputed, label, split_idx['test_mask'])
+    adj=graph.adj() if args.iso else None
+    if args.model == 'sgc': 
+      model = DeepLinear("SGC",{},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
+               args.no_bias,args.norm,args.dropout,args.iso,adj,device)
+    elif args.model == 'ssgc':
+      model = DeepLinear("SSGC",{"alpha":args.alpha},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
+               args.no_bias,args.norm,args.dropout,args.iso,adj)
+    elif args.model == 'dgc': 
+      model = DeepLinear("DGC",{"T":args.T},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
+               args.no_bias,args.norm,args.dropout,args.iso,adj)
+    elif args.model == 'sgc_res':
+      model = DeepLinear("SGCRes",{},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
+               args.no_bias,args.norm,args.dropout,args.iso,adj)
+    elif args.model == 'gcn':
+      model = GCN(in_feats, args.deep_hidden_d, n_classes, args.layer_k, activation,device,
+               args.no_bias,args.norm,args.dropout,args.iso,adj)
+    model=model.to(device)
+
+    # print(raw_features)
+    train(model, graph, raw_features, label, split_idx["train_mask"], split_idx["val_mask"],args.lr,float(args.wd),args.epochs)
+    test(model, graph, raw_features, label, split_idx["test_mask"])

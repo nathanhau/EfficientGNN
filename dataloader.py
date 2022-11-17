@@ -16,6 +16,7 @@ def load_data(dataset):
     if dataset=="arxiv":
         ds=DglNodePropPredDataset(name = "ogbn-arxiv", root = 'dataset/')
         graph,label=ds[0]
+        label=label.squeeze()
         split_idx= ds.get_idx_split()
         maskdict={}
         for (k,v) in split_idx.items():

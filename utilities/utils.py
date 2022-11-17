@@ -12,7 +12,7 @@ def mulAdj(adj,K):
         adj=torch.sparse.mm(adj,adj)
     return adj
     
-def getNormAugAdj(adj,aug=True):
+def getNormAugAdj(adj,aug=False):
     # print(adj.to_dense())
     if aug:
         adj=adj+torch.eye(adj.shape[0]).to_sparse()

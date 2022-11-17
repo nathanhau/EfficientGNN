@@ -10,7 +10,7 @@ from utilities.utils import mulAdj
 from models.DGC import DGC
 
 class SGCRes(nn.Module):
-    def __init__(self,in_feats,n_classes,K,alpha,bias=True,norm=None):
+    def __init__(self,in_feats,n_classes,K,alpha,device,bias=True,norm=None):
         super(SGCRes,self).__init__()
         self.in_feats=in_feats
         self.n_classes=n_classes
@@ -21,6 +21,7 @@ class SGCRes(nn.Module):
         self.feat_ori=None
         self.norm=norm
         self.nm=None
+        self.device=device
         if self.norm=="ln":
             self.nm=nn.LayerNorm(n_classes)
         elif self.norm=="bn":
@@ -40,6 +41,7 @@ class SGCRes(nn.Module):
         if self.precompute is None:
             adj=g.adj()
             self.precompute=mulAdj(adj, self.K)
+        self.precompute=self.precompute.to(device)
         h=(1-self.alpha)*feat+self.alpha*self.feat_ori
         h=torch.sparse.mm(self.precompute,feat)
         h=self.fc(h)

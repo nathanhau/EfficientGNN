@@ -8,7 +8,7 @@ import scipy.sparse as sp
 from time import perf_counter
 
 class SSGC(nn.Module):
-    def __init__(self,in_feats,n_classes,K,alpha,
+    def __init__(self,in_feats,n_classes,K,alpha,device,
                 bias=True,norm=None):
         super(SSGC,self).__init__()
         self.in_feats=in_feats
@@ -20,6 +20,7 @@ class SSGC(nn.Module):
         self.reset_parameters()
         self.norm=norm
         self.nm=None
+        self.device=device
         if self.norm=="ln":
             self.nm=nn.LayerNorm(n_classes)
         elif self.norm=="bn":
@@ -38,7 +39,7 @@ class SSGC(nn.Module):
             else:
                 self.feat_ori=feat_ori
         adj=g.adj()
-        h = torch.zeros_like(feat)
+        h = torch.zeros_like(feat).to(device)
         for i in range(self.K):
             feat = torch.spmm(adj, feat)
             h += (1-self.alpha)*feat + self.alpha*self.feat_ori
@@ -48,8 +49,10 @@ class SSGC(nn.Module):
             h=self.nm(h)
         return h
 
-def ssgc_precompute(features,adj,K,alpha):
+def ssgc_precompute(features,adj,K,alpha,device):
     t=perf_counter()
+    features=features.to(device)
+    adj=adj.to(device)
     feat_ori=features
     feature_set = torch.zeros_like(features)
     for i in range(K):

@@ -10,17 +10,19 @@ from time import perf_counter
 import dgl
 
 
-def preprocess_linear(graph, features, model, K, T=None, alpha=None):
+def preprocess_linear(graph, features, model, K, device,T=None, alpha=None):
     precomputed = None
     pt = 0
+    features=features.to(device)
+    graph=graph.to(device)
     if (model == "sgc"):
-        precomputed, pt = sgc_precompute(features, graph.adj(), K)
+        precomputed, pt = sgc_precompute(features, graph.adj(), K,device)
     elif (model == "ssgc"):
         assert isinstance(alpha, float), "Invalid alpha"
-        precomputed,pt=ssgc_precompute(features,graph.adj(),K,alpha)
+        precomputed,pt=ssgc_precompute(features,graph.adj(),K,alpha,device)
     elif (model=="dgc"):
         assert isinstance(T, int) or isinstance(T, float), "Invalid T"
-        precomputed, pt = dgc_precompute(features, graph.adj(), T, K)
+        precomputed, pt = dgc_precompute(features, graph.adj(), T, K,device)
     else:
         raise ValueError("Invalid model")
     return precomputed,pt
@@ -36,10 +38,10 @@ def train_linear(features,labels,n_classes,epochs=100,lr=0.2,weight_decay=5e-6):
         ln.train()
         optimizer.zero_grad()
         output = ln(features)
-        print(output.shape)
-        print(labels.shape)
+        # print(output.shape)
+        # print(labels.shape)
         loss = F.cross_entropy(output, labels)
-        print(loss)
+        # print(loss)
         loss.backward()
         optimizer.step()
     training_time = perf_counter()-t
