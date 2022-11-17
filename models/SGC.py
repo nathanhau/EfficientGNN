@@ -6,6 +6,7 @@ from dgl.nn.pytorch import conv
 import numpy as np
 import scipy.sparse as sp
 from time import perf_counter
+from utilities.utils import mulAdj
 
 class SGC(nn.Module):
     def __init__(self,in_feats,n_classes,K,bias=True,norm=None):
@@ -34,8 +35,8 @@ class SGC(nn.Module):
             self.precompute=mulAdj(adj, self.K)
         h=torch.sparse.mm(self.precompute,feat)
         h=self.fc(h)
-        print(self.norm)
         if self.norm is not None:
+            print('NORM: ', self.norm)
             h=self.nm(h)
         return h
 

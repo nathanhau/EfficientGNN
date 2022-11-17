@@ -1,4 +1,7 @@
-from models import sgc_precompute, ssgc_precompute, dgc_precompute, getNormAugAdj
+from models.SGC import sgc_precompute
+from models.SSGC import ssgc_precompute
+from models.DGC import dgc_precompute
+from utilities.utils import getNormAugAdj
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
