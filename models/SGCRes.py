@@ -39,9 +39,9 @@ class SGCRes(nn.Module):
             else:
                 self.feat_ori=feat_ori
         if self.precompute is None:
-            adj=g.adj()
+            adj=g.adj().to(self.device)
             self.precompute=mulAdj(adj, self.K)
-        self.precompute=self.precompute.to(device)
+        self.precompute=self.precompute.to(self.device)
         h=(1-self.alpha)*feat+self.alpha*self.feat_ori
         h=torch.sparse.mm(self.precompute,feat)
         h=self.fc(h)

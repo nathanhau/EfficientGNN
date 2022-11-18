@@ -38,8 +38,10 @@ class SSGC(nn.Module):
                 self.feat_ori=feat
             else:
                 self.feat_ori=feat_ori
-        adj=g.adj()
-        h = torch.zeros_like(feat).to(device)
+        feat=feat.to(self.device)
+        self.feat_ori=self.feat_ori.to(self.device)
+        adj=g.adj().to(self.device)
+        h = torch.zeros_like(feat).to(self.device)
         for i in range(self.K):
             feat = torch.spmm(adj, feat)
             h += (1-self.alpha)*feat + self.alpha*self.feat_ori

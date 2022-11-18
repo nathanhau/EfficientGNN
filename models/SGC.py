@@ -32,8 +32,8 @@ class SGC(nn.Module):
 
     def forward(self,g,feat):
         if self.precompute is None:
-            adj=g.adj()
-            self.precompute=mulAdj(adj, self.K)
+            adj=g.adj().to(self.device)
+            self.precompute=mulAdj(adj, self.K).to(self.device)
         h=torch.sparse.mm(self.precompute,feat)
         h.to(self.device)
         self.precompute.to(self.device)

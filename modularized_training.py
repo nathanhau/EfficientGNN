@@ -45,7 +45,7 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
             logits = model(g, features)
         loss = loss_fn(logits[train_mask], labels[train_mask])
         optimizer.zero_grad()
-        loss.backward()
+        loss.backward(retain_graph=True)
         optimizer.step()
 
         model.eval()
@@ -133,7 +133,7 @@ if __name__ == "__main__":
     adj=graph.adj() if args.iso else None
     if args.model == 'sgc': 
       model = DeepLinear("SGC",{},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
-               args.no_bias,args.norm,args.dropout,args.iso,adj,device)
+               args.no_bias,args.norm,args.dropout,args.iso,adj)
     elif args.model == 'ssgc':
       model = DeepLinear("SSGC",{"alpha":args.alpha},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
                args.no_bias,args.norm,args.dropout,args.iso,adj)
@@ -141,7 +141,7 @@ if __name__ == "__main__":
       model = DeepLinear("DGC",{"T":args.T},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
                args.no_bias,args.norm,args.dropout,args.iso,adj)
     elif args.model == 'sgc_res':
-      model = DeepLinear("SGCRes",{},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
+      model = DeepLinear("SGCRes",{"alpha":args.alpha},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,
                args.no_bias,args.norm,args.dropout,args.iso,adj)
     elif args.model == 'gcn':
       model = GCN(in_feats, args.deep_hidden_d, n_classes, args.layer_k, activation,device,
