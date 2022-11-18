@@ -88,8 +88,10 @@ k_hop = 5
 num_layers = 5
 
 if __name__ == "__main__":
-  import argparse
-
+  import argparse,gc
+  gc.collect()
+  del variables
+  torch.cuda.empty_cache()
   parser = argparse.ArgumentParser()
 
   parser.add_argument("--dataset", help="arxiv|cora|citeseer|pubmed")
@@ -123,11 +125,20 @@ if __name__ == "__main__":
 
   # alpha is used for ssgc
   if args.mode=="linear":
-    precomputed,pt = preprocess_linear(graph, raw_features , args.model, args.K, device,T=args.T, alpha=args.alpha)
-    ln=nn.Linear(raw_features.shape[1],n_classes).to(device)
-    train(ln,graph,precomputed,label,split_idx['train_mask'],split_idx['val_mask'],args.lr,float(args.wd),args.epochs,is_linear=True)
-    test(ln,graph,precomputed,label,split_idx['test_mask'],is_linear=True)
+    # precomputed,pt = preprocess_linear(graph, raw_features , args.model, args.K, device,T=args.T, alpha=args.alpha)
+    # ln=nn.Linear(raw_features.shape[1],n_classes).to(device)
+    # train(ln,graph,precomputed,label,split_idx['train_mask'],split_idx['val_mask'],args.lr,float(args.wd),args.epochs,is_linear=True)
+    # test(ln,graph,precomputed,label,split_idx['test_mask'],is_linear=True)
 
+    if args.model == 'sgc': 
+      model = SGC(in_feats, n_classes, args.K, device)
+    elif args.model == 'ssgc':
+      model = SSGC(in_feats, n_classes, args.K, args.alpha, device)
+    elif args.model == 'dgc': 
+      model = DGC(in_feats, n_classes, args.K, args.T, device)
+    model=model.to(device)
+    train(model, graph, raw_features, label, split_idx["train_mask"], split_idx["val_mask"],args.lr,float(args.wd),args.epochs)
+    test(model, graph, raw_features, label, split_idx["test_mask"])
   elif args.mode=="deeplinear":
 
     adj=graph.adj() if args.iso else None
