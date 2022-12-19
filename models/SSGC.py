@@ -6,10 +6,11 @@ from dgl.nn.pytorch import conv
 import numpy as np
 import scipy.sparse as sp
 from time import perf_counter
-
+from utilities.utils import getNormAugAdj
 class SSGC(nn.Module):
+    precompute_dict={}
     def __init__(self,in_feats,n_classes,K,alpha,device,
-                bias=True,norm=None):
+                bias=True,norm=None,is_linear=True):
         super(SSGC,self).__init__()
         self.in_feats=in_feats
         self.n_classes=n_classes
@@ -21,6 +22,8 @@ class SSGC(nn.Module):
         self.norm=norm
         self.nm=None
         self.device=device
+        self.is_linear=is_linear
+        self.precompute=None
         if self.norm=="ln":
             self.nm=nn.LayerNorm(n_classes)
         elif self.norm=="bn":
@@ -40,12 +43,18 @@ class SSGC(nn.Module):
                 self.feat_ori=feat_ori
         feat=feat.to(self.device)
         self.feat_ori=self.feat_ori.to(self.device)
-        adj=g.adj().to(self.device)
-        h = torch.zeros_like(feat).to(self.device)
-        for i in range(self.K):
-            feat = torch.spmm(adj, feat)
-            h += (1-self.alpha)*feat + self.alpha*self.feat_ori
-            h /= self.K
+        if self.precompute is None:
+            adj=getNormAugAdj(g.adj()).to(self.device)
+            h = torch.zeros_like(feat).to(self.device)
+            for i in range(self.K):
+                feat = torch.sparse.mm(adj, feat)
+                h += (1-self.alpha)*feat + self.alpha*self.feat_ori
+                h /= self.K
+        else:
+            h=self.precompute.detach().clone()
+        if self.is_linear:
+            self.precompute=h
+        # h=h.detach()
         h=self.fc(h)
         if self.norm is not None:
             h=self.nm(h)

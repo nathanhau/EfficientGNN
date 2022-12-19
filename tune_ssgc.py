@@ -18,11 +18,12 @@ from time import perf_counter
 
 
 
-
+class Graph:
+    graph, labels, split_idx = load_data('cora')
 
 def objective(trial):
     
-    graph, labels, split_idx = load_data('cora')
+    graph, labels, split_idx = Graph.graph, Graph.labels, Graph.split_idx
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     g = preprocess_graph(graph).to(device)
@@ -32,14 +33,14 @@ def objective(trial):
 
     in_feats = features.shape[-1]
     n_classes = labels.max().item()+1
-    K=2
+    K=250
     is_linear=False
     loss_fn=nn.CrossEntropyLoss()
-    model=SGC(in_feats,n_classes,K,device,is_linear=True)
-    epochs=100
+    model=DGC(in_feats,n_classes,K,5.27,device,is_linear=True)
+    epochs=10
     train_mask,val_mask=split_idx["train_mask"], split_idx["val_mask"]
-    # lr=trial.suggest_float("lr",1e-5,1e-3)
-    lr=0.2
+    lr=trial.suggest_float("lr",0.0005,0.2,log=True)
+    # lr=0.2
     weight_decay=trial.suggest_float('weight_decay',1e-6,1e-3,log=True)
     
     t = perf_counter()
@@ -78,7 +79,7 @@ def objective(trial):
 if __name__ == "__main__":
     study = optuna.create_study(direction="maximize")
     
-    study.optimize(objective, n_trials=100, timeout=600)
+    study.optimize(objective, n_trials=500, timeout=600)
 
     pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
     complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])

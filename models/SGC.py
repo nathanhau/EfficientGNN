@@ -6,10 +6,11 @@ from dgl.nn.pytorch import conv
 import numpy as np
 import scipy.sparse as sp
 from time import perf_counter
-from utilities.utils import mulAdj
+from utilities.utils import mulAdj, getNormAugAdj
 
 class SGC(nn.Module):
-    def __init__(self,in_feats,n_classes,K,device,bias=True,norm=None):
+    precompute_dict={}
+    def __init__(self,in_feats,n_classes,K,device,bias=True,norm=None,is_linear=False):
         super(SGC,self).__init__()
         self.in_feats=in_feats
         self.n_classes=n_classes
@@ -19,6 +20,7 @@ class SGC(nn.Module):
         self.norm=norm
         self.nm=None
         self.device=device
+        self.is_linear=is_linear
         if self.norm=="ln":
             self.nm=nn.LayerNorm(n_classes)
         elif self.norm=="bn":
@@ -32,12 +34,31 @@ class SGC(nn.Module):
 
     def forward(self,g,feat):
         if self.precompute is None:
-            adj=g.adj().to(self.device)
+            self.precompute=SGC.precompute_dict.get(self.K,None)
+            # print(self.precompute)
+        if self.precompute is None:
+            t1=perf_counter()
+            adj=getNormAugAdj(g.adj()).to(self.device)
             self.precompute=mulAdj(adj, self.K).to(self.device)
-        h=torch.sparse.mm(self.precompute,feat)
-        h.to(self.device)
-        self.precompute.to(self.device)
+            
+            if (self.is_linear):
+                self.precompute=torch.sparse.mm(self.precompute,feat)
+            # print(f'preprocess time: {perf_counter()-t1}')
+            SGC.precompute_dict[self.K]=self.precompute
+            # print(self.precompute.size())
+            
+        t1=perf_counter()
+        if (not self.is_linear):
+            h=torch.sparse.mm(self.precompute,feat)
+            # print(f'mul: {perf_counter()-t1}')
+            h.to(self.device)
+        else:
+            h=self.precompute.detach().clone()
+        # self.precompute.to(self.device)
+        # print(h.size())
+        t1=perf_counter()
         h=self.fc(h)
+        # print(f'lin: {perf_counter()-t1}')
         if self.norm is not None:
             # print('NORM: ', self.norm)
             h=self.nm(h)

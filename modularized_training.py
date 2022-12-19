@@ -36,18 +36,23 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
     labels=labels.to(device)
     g=g.to(device)
     features=features.to(device)
+    forward_time=[]
+    backward_time=[]
     for epoch in range(epochs):
         model.train()
         logits = None
+        t1=perf_counter()
         if is_linear:
             logits = model(features)
         else:
             logits = model(g, features)
+        forward_time.append(perf_counter()-t1)
         loss = loss_fn(logits[train_mask], labels[train_mask])
         optimizer.zero_grad()
+        t1=perf_counter()
         loss.backward()
         optimizer.step()
-
+        backward_time.append(perf_counter()-t1)
         model.eval()
         if is_linear:
             logits = model(features)
@@ -56,11 +61,12 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
         train_acc = torch.sum(logits[train_mask].argmax(1) == labels[train_mask]).item() / train_mask.sum().item()
         val_acc = torch.sum(logits[val_mask].argmax(1) == labels[val_mask]).item() / val_mask.sum().item()
         # test_acc = torch.sum(logits[test_mask].argmax(1) == labels[test_mask]).item() / test_mask.sum().item()
-        # print(f'Epoch {epoch + 1:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}')
+        print(f'Epoch {epoch + 1:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}')
 
     training_time = perf_counter()-t
-    print(f'Training time: {training_time:.4f}s')
-
+    print(f'Training time: {training_time:.4f}s, avg: {training_time/epochs:.4f}')
+    print(f'Forward: {sum(forward_time)/len(forward_time)}')
+    print(f'Backward: {sum(backward_time)/len(backward_time)}')
 def test(model, g, features, labels, mask,is_linear=False):
     model.eval()
     mask=mask.to(device)
@@ -96,7 +102,7 @@ if __name__ == "__main__":
 
   parser.add_argument("--dataset", help="arxiv|cora|citeseer|pubmed")
   parser.add_argument("--mode", type=str, choices=["linear","linearmlp","deeplinear"])
-  parser.add_argument("--model", type=str, choices=["sgc","ssgc","dgc","sgc_res","gcn"], help="sgc|ssgc|dgc|sgc_res|gcn")
+  parser.add_argument("--model", type=str, choices=["sgc","ssgc","dgc","sgc_res","gcn","sgc_dgl"], help="sgc|ssgc|dgc|sgc_res|gcn")
   parser.add_argument("--K","--k", type=int,default=2)
   parser.add_argument("--lr",type=float)
   parser.add_argument("--wd",type=str)
@@ -131,11 +137,13 @@ if __name__ == "__main__":
     # test(ln,graph,precomputed,label,split_idx['test_mask'],is_linear=True)
 
     if args.model == 'sgc': 
-      model = SGC(in_feats, n_classes, args.K, device)
+      model = SGC(in_feats, n_classes, args.K, device,is_linear=True)
     elif args.model == 'ssgc':
-      model = SSGC(in_feats, n_classes, args.K, args.alpha, device)
+      model = SSGC(in_feats, n_classes, args.K, args.alpha, device,is_linear=True)
     elif args.model == 'dgc': 
-      model = DGC(in_feats, n_classes, args.K, args.T, device)
+      model = DGC(in_feats, n_classes, args.K, args.T, device,is_linear=True)
+    elif args.model=='sgc_dgl':
+      model=SGConv(in_feats, n_classes, args.K, cached=True, bias=False)
     model=model.to(device)
     train(model, graph, raw_features, label, split_idx["train_mask"], split_idx["val_mask"],args.lr,float(args.wd),args.epochs)
     test(model, graph, raw_features, label, split_idx["test_mask"])
