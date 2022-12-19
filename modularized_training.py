@@ -7,7 +7,7 @@ from models.DGC import DGC
 from models.SGC import SGC
 from stacked_models import DeepLinear, LinearMLP
 from models.GCN import GCN
-
+from dgl.nn.pytorch.conv import SGConv
 
 from dgl.data import CoraGraphDataset, CiteseerGraphDataset, PubmedGraphDataset
 import torch.nn as nn
@@ -45,7 +45,7 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
             logits = model(g, features)
         loss = loss_fn(logits[train_mask], labels[train_mask])
         optimizer.zero_grad()
-        loss.backward(retain_graph=True)
+        loss.backward()
         optimizer.step()
 
         model.eval()
@@ -56,7 +56,7 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
         train_acc = torch.sum(logits[train_mask].argmax(1) == labels[train_mask]).item() / train_mask.sum().item()
         val_acc = torch.sum(logits[val_mask].argmax(1) == labels[val_mask]).item() / val_mask.sum().item()
         # test_acc = torch.sum(logits[test_mask].argmax(1) == labels[test_mask]).item() / test_mask.sum().item()
-        print(f'Epoch {epoch + 1:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}')
+        # print(f'Epoch {epoch + 1:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}')
 
     training_time = perf_counter()-t
     print(f'Training time: {training_time:.4f}s')
@@ -90,7 +90,7 @@ num_layers = 5
 if __name__ == "__main__":
   import argparse,gc
   gc.collect()
-  del variables
+  # del variables
   torch.cuda.empty_cache()
   parser = argparse.ArgumentParser()
 
