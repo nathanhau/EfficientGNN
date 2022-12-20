@@ -1,0 +1,1 @@
+python .\modularized_training.py --dataset cora --mode deeplinear --model sgc --K 2 --lr 0.01 --w 5e-4 --T 1 --alpha 0.1 --epochs 50 --layer_k 2 --deep_hidden_d 32 --dropout 0.5 --norm bn

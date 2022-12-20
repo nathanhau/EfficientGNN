@@ -4,3 +4,6 @@ torch
 ogb
 autopep8
 ipykernel
+optuna
+plotly
+matplotlib

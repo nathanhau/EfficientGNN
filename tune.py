@@ -32,14 +32,17 @@ def objective(trial):
 
     in_feats = features.shape[-1]
     n_classes = labels.max().item()+1
-    K=2
+    #K=2
+    K=trial.suggest_int('K',2,20,log=True)
     is_linear=False
     loss_fn=nn.CrossEntropyLoss()
     model=SGC(in_feats,n_classes,K,device,is_linear=True)
     epochs=100
+    epochs=trial.suggest_int('epochs',50,100)
     train_mask,val_mask=split_idx["train_mask"], split_idx["val_mask"]
-    # lr=trial.suggest_float("lr",1e-5,1e-3)
-    lr=0.2
+    #lr=0.2
+    lr=trial.suggest_float("lr",1e-5,1e-3)
+    #weight_decay=1.2e-05
     weight_decay=trial.suggest_float('weight_decay',1e-6,1e-3,log=True)
     
     t = perf_counter()
@@ -96,3 +99,5 @@ if __name__ == "__main__":
     print("  Params: ")
     for key, value in trial.params.items():
         print("    {}: {}".format(key, value))
+    optuna.visualization.plot_param_importances(study)
+    optuna.visualization.plot_contour(study)
