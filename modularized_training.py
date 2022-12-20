@@ -148,7 +148,7 @@ if __name__ == "__main__":
     train(model, graph, raw_features, label, split_idx["train_mask"], split_idx["val_mask"],args.lr,float(args.wd),args.epochs)
     test(model, graph, raw_features, label, split_idx["test_mask"])
   elif args.mode=="deeplinear":
-
+    print(f"args {args.K}")
     adj=graph.adj() if args.iso else None
     if args.model == 'sgc': 
       model = DeepLinear("SGC",{},in_feats, args.deep_hidden_d, n_classes, args.K, args.layer_k, activation,device,

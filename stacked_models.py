@@ -34,7 +34,7 @@ class DeepLinear(nn.Module):
         self.layers = nn.ModuleList()
         self.klist = []
         self.device=device
-        # self.precompute=precompute
+        self.precompute={}
 
         if not isinstance(n_layers, list):
             self.klist = [K//n_layers for i in range(n_layers)]

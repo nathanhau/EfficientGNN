@@ -16,6 +16,7 @@ class DGC(nn.Module):
         self.n_classes=n_classes
         self.T=T
         self.K=K
+        print(f"{self.K} {K}")
         self.delta=T/K
         self.fc=nn.Linear(in_feats,n_classes,bias=bias)
         self.precompute=None
@@ -26,8 +27,10 @@ class DGC(nn.Module):
             self.nm=nn.LayerNorm(n_classes)
         elif self.norm=="bn":
             self.nm=nn.BatchNorm1d(n_classes)
-        self.reset_parameters()
+        # self.reset_parameters()
         self.is_linear=is_linear
+        print(DGC.precompute_dict.keys())
+        print(self.K)
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.fc.weight)
         if self.fc.bias is not None:
@@ -36,6 +39,7 @@ class DGC(nn.Module):
     def forward(self,g,feat):
         if self.precompute is None:
             self.precompute=DGC.precompute_dict.get(self.K,None)
+            # print('precomp assigned')
         if self.precompute is None:
             t1=perf_counter()
             adj=g.adj().to(self.device)
