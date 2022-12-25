@@ -16,7 +16,7 @@ class DGC(nn.Module):
         self.n_classes=n_classes
         self.T=T
         self.K=K
-        print(f"{self.K} {K}")
+        # print(f"{self.K} {K}")
         self.delta=T/K
         self.fc=nn.Linear(in_feats,n_classes,bias=bias)
         self.precompute=None
@@ -29,8 +29,8 @@ class DGC(nn.Module):
             self.nm=nn.BatchNorm1d(n_classes)
         # self.reset_parameters()
         self.is_linear=is_linear
-        print(DGC.precompute_dict.keys())
-        print(self.K)
+        # print(DGC.precompute_dict.keys())
+        # print(self.K)
     def reset_parameters(self):
         nn.init.xavier_uniform_(self.fc.weight)
         if self.fc.bias is not None:
@@ -44,7 +44,7 @@ class DGC(nn.Module):
             t1=perf_counter()
             adj=g.adj().to(self.device)
             t3=perf_counter()
-            S=getNormAugAdj(adj).to(self.device)
+            S=getNormAugAdj(adj,self.device).to(self.device)
             print(f'norm: {perf_counter()-t3}')
             I=torch.eye(adj.shape[0]).to_sparse().to(self.device)
             t4=perf_counter()

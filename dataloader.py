@@ -1,4 +1,5 @@
-# from ogb.nodeproppred import DglNodePropPredDataset
+from sklearn.metrics import roc_auc_score, average_precision_score
+from ogb.nodeproppred import DglNodePropPredDataset
 from dgl.data import CoraGraphDataset,CiteseerGraphDataset,PubmedGraphDataset
 import torch
 import dgl
@@ -100,22 +101,22 @@ def get_prep_pubmed():
     return g, features, labels, n_classes, in_feats, train_mask, val_mask, test_mask
 
 if __name__=="__main__":
-    graph, label, split_idx = load_data('cora')
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # graph, label, split_idx = load_data('cora')
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # 
     # graph = preprocess_graph(graph).to(device)
     # # print(graph.adj().to_dense()[0][0])
     # adj=graph.adj()
     # print((adj.transpose(0,1)==adj).all())
-    adj=torch.randint(2,(1000,1000)).float().to_sparse()
-    t1=perf_counter()
-    a=getNormAugAdj(adj)
-    t1=perf_counter()-t1
+    # adj=torch.randint(2,(1000,1000)).float().to_sparse()
+    # t1=perf_counter()
+    # a=getNormAugAdj(adj)
+    # t1=perf_counter()-t1
     # a=adj.to_dense()
     # t2=perf_counter()
     # b=normalized_adjacency(a)
     # t2=perf_counter()-t2
-    print(t1)
+    # print(t1)
     # print(t2)
     # print(a.to_dense())
     # print(b)
@@ -124,18 +125,38 @@ if __name__=="__main__":
     # print(getNormAugAdj(g.adj()).to_dense() )
     # g.add_self_loop()
     # print(g.adj().to_dense())
-    a1=torch.randint(1,6,(50,50)).float()
+    # a1=torch.randint(1,6,(50,50)).float()
     # a1=torch.tensor([[2,3,5,2],[3,4,2,5],[4,5,4,3],[5,5,1,4]]).float()
     # print(a1)
-    a1=a1.to_sparse()
+    # a1=a1.to_sparse()
     # a2=torch.rand(1000,1000)
-    t3=perf_counter()
+    # t3=perf_counter()
     # a3=torch.sum(a1,1)
-    print(mulAdj(a1, 10).to_dense())
-    print(perf_counter()-t3)
+    # print(mulAdj(a1, 10).to_dense())
+    # print(perf_counter()-t3)
     # a1=a1.to_sparse()
     # a2=a2.to_sparse()
-    t3=perf_counter()
-    print(mulAdj2(a1,10).to_dense())
-    print(perf_counter()-t3)
+    # t3=perf_counter()
+    # print(mulAdj2(a1,10).to_dense())
+    # print(perf_counter()-t3)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(device)
+    graph,b,c=load_data('cora')
+    print(graph)
+    # print(graph.adj().to_dense()[0][0])
+    adj=graph.adj().to(device)
+    print(adj[10][10])
+    print(getNormAugAdj(adj,device)[10][10])
+    print(mulAdj(adj, 3))
+    # row=torch.sparse.sum(adj,1)
+    # total=torch.sparse.sum(row)
+    # print(total)
+    # print((adj.transpose(0,1)==adj).all())
+    # graph = preprocess_graph(graph).to(device)
+    # print((adj.transpose(0,1)==adj).all())
+    # adj=graph.adj()
+    # row=torch.sparse.sum(adj,1)
+    # total=torch.sparse.sum(row)
+    # print(total)
+    
     

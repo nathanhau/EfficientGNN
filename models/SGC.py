@@ -38,7 +38,8 @@ class SGC(nn.Module):
             # print(self.precompute)
         if self.precompute is None:
             t1=perf_counter()
-            adj=getNormAugAdj(g.adj()).to(self.device)
+            adj=g.adj().to(self.device)
+            adj=getNormAugAdj(adj,self.device).to(self.device)
             self.precompute=mulAdj(adj, self.K).to(self.device)
             
             if (self.is_linear):

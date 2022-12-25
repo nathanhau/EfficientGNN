@@ -17,7 +17,7 @@ class GCN(nn.Module):
         self.in_feats = in_feats
         self.n_hidden = n_hidden
         self.n_classes = n_classes
-        self.n_layers = n_layers[0]
+        self.n_layers = n_layers
         self.activation = activation
         self.bias = bias
         self.norm = norm

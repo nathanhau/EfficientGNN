@@ -18,7 +18,7 @@ from time import perf_counter
 
 
 # hyperparam
-device = 'cpu'
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 activation = nn.ReLU()
 epochs = 50
 batch_size = 10000
@@ -38,6 +38,7 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
     features=features.to(device)
     forward_time=[]
     backward_time=[]
+    model.to(device)
     for epoch in range(epochs):
         model.train()
         logits = None
@@ -61,7 +62,7 @@ def train(model, g, features, labels, train_mask, val_mask,lr,weight_decay,epoch
         train_acc = torch.sum(logits[train_mask].argmax(1) == labels[train_mask]).item() / train_mask.sum().item()
         val_acc = torch.sum(logits[val_mask].argmax(1) == labels[val_mask]).item() / val_mask.sum().item()
         # test_acc = torch.sum(logits[test_mask].argmax(1) == labels[test_mask]).item() / test_mask.sum().item()
-        print(f'Epoch {epoch + 1:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}')
+        # print(f'Epoch {epoch + 1:02d}, Loss: {loss:.4f}, Train: {train_acc:.4f}, Val: {val_acc:.4f}')
 
     training_time = perf_counter()-t
     print(f'Training time: {training_time:.4f}s, avg: {training_time/epochs:.4f}')
@@ -120,6 +121,8 @@ if __name__ == "__main__":
   args=parser.parse_args()
   graph, label, split_idx = load_data(args.dataset)
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+  # device=torch.device('cpu')
+  print(device)
 
   graph = preprocess_graph(graph).to(device)
   label=label.to(device)

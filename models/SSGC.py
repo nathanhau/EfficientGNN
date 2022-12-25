@@ -36,24 +36,26 @@ class SSGC(nn.Module):
             nn.init.zeros_(self.fc.bias)
 
     def forward(self,g,feat,feat_ori=None):
-        if self.feat_ori is None:
-            if feat_ori is None:
-                self.feat_ori=feat
-            else:
-                self.feat_ori=feat_ori
+        # if self.feat_ori is None:
+        #     if feat_ori is None:
+        #         self.feat_ori=feat
+        #     else:
+        #         self.feat_ori=feat_ori
+        self.feat_ori=feat
         feat=feat.to(self.device)
         self.feat_ori=self.feat_ori.to(self.device)
         if self.precompute is None:
-            adj=getNormAugAdj(g.adj()).to(self.device)
+            adj=g.adj().to(device)
+            adj=getNormAugAdj(adj,self.device).to(self.device)
             h = torch.zeros_like(feat).to(self.device)
             for i in range(self.K):
                 feat = torch.sparse.mm(adj, feat)
                 h += (1-self.alpha)*feat + self.alpha*self.feat_ori
                 h /= self.K
-        else:
+            if self.is_linear:
+                self.precompute=h
+        elif self.is_linear:
             h=self.precompute.detach().clone()
-        if self.is_linear:
-            self.precompute=h
         # h=h.detach()
         h=self.fc(h)
         if self.norm is not None:
